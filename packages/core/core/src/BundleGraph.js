@@ -347,6 +347,13 @@ export default class BundleGraph {
       if (node.type === 'dependency') {
         this.removeExternalDependency(bundle, node.value);
       }
+
+      if (
+        node.type === 'asset' &&
+        this._graph.hasEdge(bundle.id, node.id, 'sibling')
+      ) {
+        this._graph.addEdge(bundle.id, node.id, 'sibling');
+      }
     }, nullthrows(this._graph.getNode(asset.id)));
 
     // Remove the untyped edge from the bundle to the entry.
@@ -901,6 +908,11 @@ export default class BundleGraph {
       }
     }
 
+    // console.log(
+    //   'containing',
+    //   bundle.id,
+    //   [...bundleGroups].map(b => b.entryAssetId),
+    // );
     return [...bundleGroups];
   }
 
@@ -933,20 +945,38 @@ export default class BundleGraph {
       }
     }
 
-    return [...bundles].reverse();
+    // console.log(
+    //   'ingroup',
+    //   bundleGroup.entryAssetId,
+    //   [...bundles].map(b => b.id),
+    // );
+
+    return [...bundles];
   }
 
   getOwnSiblingBundles(bundle: Bundle): Array<Bundle> {
     let siblings = new Set();
-    let bundleNode = nullthrows(this._graph.getNode(bundle.id));
-    for (let node of this._graph.getNodesConnectedFrom(bundleNode, 'sibling')) {
-      invariant(node.type === 'asset');
-      for (let referencedBundle of this.getBundlesReferencedByAsset(
-        node.value,
+    let stack = [bundle];
+
+    let _bundle;
+    while ((_bundle = stack.pop())) {
+      let bundleNode = nullthrows(this._graph.getNode(_bundle.id));
+      for (let node of this._graph.getNodesConnectedFrom(
+        bundleNode,
+        'sibling',
       )) {
-        siblings.add(referencedBundle);
+        invariant(node.type === 'asset');
+        for (let referencedBundle of this.getBundlesReferencedByAsset(
+          node.value,
+        )) {
+          if (!siblings.has(referencedBundle)) {
+            siblings.add(referencedBundle);
+            stack.push(referencedBundle);
+          }
+        }
       }
     }
+
     return [...siblings];
   }
 
@@ -1244,6 +1274,7 @@ export default class BundleGraph {
   }
 
   getReferencedBundles(bundle: Bundle): Array<Bundle> {
+    return this.getOwnSiblingBundles(bundle);
     let referencedBundles: Set<Bundle> = new Set(
       this.getOwnSiblingBundles(bundle),
     );
