@@ -831,7 +831,7 @@ export default class BundleGraph {
   }
 
   getChildBundles(bundle: Bundle): Array<Bundle> {
-    let siblings = new Set(this.getOwnSiblingBundles(bundle));
+    let siblings = new Set(this.getReferencedBundles(bundle, true));
     let bundles = [];
     this.traverseBundles((b, _, actions) => {
       if (bundle.id === b.id) {
@@ -981,8 +981,9 @@ export default class BundleGraph {
       invariant(bundleNode.type === 'bundle');
       bundles.add(bundleNode.value);
 
-      for (let referencedBundle of this.getOwnSiblingBundles(
+      for (let referencedBundle of this.getReferencedBundles(
         bundleNode.value,
+        true,
       )) {
         bundles.add(referencedBundle);
       }
@@ -991,9 +992,9 @@ export default class BundleGraph {
     return [...bundles];
   }
 
-  getOwnSiblingBundles(
+  getReferencedBundles(
     bundle: Bundle,
-    includeInline: boolean = false,
+    recursive: boolean = false,
   ): Array<Bundle> {
     let siblings = new Set();
     let stack = [bundle];
@@ -1010,26 +1011,24 @@ export default class BundleGraph {
           for (let referencedBundle of this.getBundlesReferencedByDependency(
             dependency,
           )) {
-            if (
-              dependency.isAsync &&
-              (!includeInline || !referencedBundle.isInline)
-            ) {
+            if (dependency.isAsync && !referencedBundle.isInline) {
               continue;
             }
 
             if (!siblings.has(referencedBundle)) {
               siblings.add(referencedBundle);
-              stack.push(referencedBundle);
+              if (recursive) {
+                stack.push(referencedBundle);
+              }
             }
           }
         } else if (node.type === 'bundle') {
           let referencedBundle = node.value;
-          if (
-            (!includeInline || referencedBundle.isInline) &&
-            !siblings.has(referencedBundle)
-          ) {
+          if (!siblings.has(referencedBundle)) {
             siblings.add(referencedBundle);
-            stack.push(referencedBundle);
+            if (recursive) {
+              stack.push(referencedBundle);
+            }
           }
         } else {
           throw new Error('Unexpected reference node of type ' + node.type);
@@ -1335,10 +1334,6 @@ export default class BundleGraph {
         return this.getBundleWithAssetAsEntry(node.value);
       })
       .filter(Boolean);
-  }
-
-  getReferencedBundles(bundle: Bundle): Array<Bundle> {
-    return this.getOwnSiblingBundles(bundle, true);
   }
 
   addBundleToBundleGroup(bundle: Bundle, bundleGroup: BundleGroup) {
