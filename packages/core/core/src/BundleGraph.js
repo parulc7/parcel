@@ -610,7 +610,7 @@ export default class BundleGraph {
         return;
       }
 
-      let similarSiblings = this.getSiblingBundles(descendant).filter(
+      let similarSiblings = this.getReferencedBundles(descendant, true).filter(
         sibling =>
           sibling.type === bundle.type &&
           sibling.env.context === bundle.env.context,
@@ -1041,22 +1041,6 @@ export default class BundleGraph {
           }
         } else {
           throw new Error('Unexpected reference node of type ' + node.type);
-        }
-      }
-    }
-
-    return [...siblings];
-  }
-
-  getSiblingBundles(bundle: Bundle): Array<Bundle> {
-    let siblings = new Set();
-
-    let bundleGroups = this.getBundleGroupsContainingBundle(bundle);
-    for (let bundleGroup of bundleGroups) {
-      let bundles = this.getBundlesInBundleGroup(bundleGroup);
-      for (let b of bundles) {
-        if (b.id !== bundle.id) {
-          siblings.add(b);
         }
       }
     }
