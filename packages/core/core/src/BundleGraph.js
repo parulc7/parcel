@@ -610,7 +610,7 @@ export default class BundleGraph {
         return;
       }
 
-      let similarSiblings = this.getReferencedBundles(descendant, true).filter(
+      let similarSiblings = this.getReferencedBundles(descendant).filter(
         sibling =>
           sibling.type === bundle.type &&
           sibling.env.context === bundle.env.context,
@@ -826,7 +826,7 @@ export default class BundleGraph {
   }
 
   getChildBundles(bundle: Bundle): Array<Bundle> {
-    let siblings = new Set(this.getReferencedBundles(bundle, true));
+    let siblings = new Set(this.getReferencedBundles(bundle));
     let bundles = [];
     this.traverseBundles((b, _, actions) => {
       if (bundle.id === b.id) {
@@ -979,7 +979,6 @@ export default class BundleGraph {
 
       for (let referencedBundle of this.getReferencedBundles(
         bundleNode.value,
-        true,
       )) {
         bundles.add(referencedBundle);
       }
@@ -990,8 +989,9 @@ export default class BundleGraph {
 
   getReferencedBundles(
     bundle: Bundle,
-    recursive: boolean = false,
+    opts?: {|recursive: boolean|},
   ): Array<Bundle> {
+    let recursive = opts?.recursive ?? true;
     let siblings = new Set();
     let stack = [bundle];
 
